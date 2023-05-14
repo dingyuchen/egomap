@@ -9,20 +9,20 @@ type Log[K comparable, V any] interface {
 }
 
 const (
-	write = iota
-	delete
+	Write = iota
+	Delete
 )
 
 type op int
 
 type Operation[K comparable, V any] struct {
-	inst    op
-	payload opsData[K, V]
+	Inst    op
+	Payload opsData[K, V]
 }
 
 type opsData[K comparable, V any] struct {
-	key   K
-	value V
+	Key   K
+	Value V
 }
 
 type oplog[K comparable, V any] struct {
@@ -31,8 +31,8 @@ type oplog[K comparable, V any] struct {
 
 func (l *oplog[K, V]) AddWrite(key K, value V) {
 	op := Operation[K, V]{
-		inst: write,
-		payload: opsData[K, V]{
+		Inst: Write,
+		Payload: opsData[K, V]{
 			key,
 			value,
 		},
@@ -42,9 +42,9 @@ func (l *oplog[K, V]) AddWrite(key K, value V) {
 
 func (l *oplog[K, V]) AddDelete(key K) {
 	op := Operation[K, V]{
-		inst: write,
-		payload: opsData[K, V]{
-			key: key,
+		Inst: Write,
+		Payload: opsData[K, V]{
+			Key: key,
 		},
 	}
 	l.queue.Enqueue(op)
@@ -56,6 +56,6 @@ func (l *oplog[K, V]) Poll() (Operation[K, V], error) {
 
 func New[K comparable, V any]() Log[K, V] {
 	return &oplog[K, V]{
-		queue: &queue.Queue[Operation[K, V]]{},
+		queue: queue.New[Operation[K, V]](),
 	}
 }

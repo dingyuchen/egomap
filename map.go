@@ -1,29 +1,32 @@
 package egomap
 
-type Map[K comparable, V any] interface {
-	Get(K) (V, bool)
-	Set(K, V)
+import "sync/atomic"
+
+type leftRightMap[K comparable, V any] struct {
+	backingMaps [2]map[K]V
+	ptr         *atomic.Int32
 }
 
-type egomap[K comparable, V any] struct {
-	backingMaps []map[K]V
+func (m *leftRightMap[K, V]) readable() map[K]V {
+	return m.backingMaps[m.ptr.Load()]
 }
 
-func NewMap[K comparable, V any]() (Reader[K, V], Writer[K, V]) {
-	innerMap := &egomap[K, V]{
-		backingMaps: []map[K]V{
+func (m *leftRightMap[K, V]) writeable() map[K]V {
+	return m.backingMaps[1-m.ptr.Load()]
+}
+
+func (m *leftRightMap[K, V]) swap() {
+	m.ptr.Store(1 - m.ptr.Load())
+}
+
+func NewMap[K comparable, V any]() (ReadHandler[K, V], Writer[K, V]) {
+	innerMap := &leftRightMap[K, V]{
+		backingMaps: [2]map[K]V{
 			{},
 			{},
 		},
+		ptr: &atomic.Int32{},
 	}
-	return NewReader[K, V](innerMap), NewWriter[K, V](innerMap)
-}
-
-func (m *egomap[K, V]) Get(key K) (V, bool) {
-	v, ok := m.backingMaps[0][key]
-	return v, ok
-}
-
-func (m *egomap[K, V]) Set(key K, value V) {
-	m.backingMaps[0][key] = value
+	writer := NewWriter(innerMap)
+	return NewReadHandler(innerMap, writer), writer
 }
