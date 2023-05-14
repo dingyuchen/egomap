@@ -4,7 +4,7 @@ import "sync/atomic"
 
 type Reader[K comparable, V any] interface {
 	Get(K) (V, bool)
-	Unregister()
+	Close()
 }
 
 type reader[K comparable, V any] struct {
@@ -22,12 +22,12 @@ func (r *reader[K, V]) Get(key K) (V, bool) {
 	return v, ok
 }
 
-func (r *reader[K, V]) Unregister() {
+func (r *reader[K, V]) Close() {
 	r.removeSelf()
 }
 
 type ReadHandler[K comparable, V any] interface {
-	NewReader() Reader[K, V]
+	Reader() Reader[K, V]
 }
 
 type readhandler[K comparable, V any] struct {
@@ -36,7 +36,7 @@ type readhandler[K comparable, V any] struct {
 	writer   writeHandler[K, V]
 }
 
-func (rh *readhandler[K, V]) NewReader() Reader[K, V] {
+func (rh *readhandler[K, V]) Reader() Reader[K, V] {
 	reader := &reader[K, V]{
 		id:         rh.counter,
 		epoch:      &atomic.Uint32{},
