@@ -17,4 +17,8 @@ func TestNew(t *testing.T) {
 	if v, ok := reader.Get("alice"); !ok || v != 25 {
 		t.Errorf("refresh applied, expected %v, %v; got %v, %v", 25, true, v, ok)
 	}
+	writer.Refresh()
+	if v, ok := reader.Get("alice"); !ok || v != 25 {
+		t.Errorf("refresh reapplied, expected %v, %v; got %v, %v", 25, true, v, ok)
+	}
 }
