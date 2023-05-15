@@ -28,6 +28,38 @@ func TestNewWriter(t *testing.T) {
 	}
 }
 
+func Test_writer_Delete(t *testing.T) {
+	type fields struct {
+		mu       *sync.RWMutex
+		innerMap *leftRightMap[K, V]
+		oplog    oplog.Log
+		readers  map[int]*reader[K, V]
+		scan     queue.Queue
+	}
+	type args struct {
+		key K
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := &writer{
+				mu:       tt.fields.mu,
+				innerMap: tt.fields.innerMap,
+				oplog:    tt.fields.oplog,
+				readers:  tt.fields.readers,
+				scan:     tt.fields.scan,
+			}
+			w.Delete(tt.args.key)
+		})
+	}
+}
+
 func Test_writer_Refresh(t *testing.T) {
 	type fields struct {
 		mu       *sync.RWMutex

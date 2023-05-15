@@ -23,9 +23,8 @@ func (m *leftRightMap[K, V]) swap() {
 }
 
 type MapHandle[K comparable, V any] interface {
+	Writer[K, V]
 	Reader() Reader[K, V]
-	Set(K, V)
-	Refresh()
 }
 
 type pair[K comparable, V any] struct {
@@ -54,11 +53,22 @@ func (mh *mapHandle[K, V]) Reader() Reader[K, V] {
 func (mh *mapHandle[K, V]) Set(k K, v V) {
 	mh.mu.Lock()
 	mh.writer.Set(k, v)
+	mh.tick()
+	mh.mu.Unlock()
+}
+
+func (mh *mapHandle[K, V]) tick() {
 	mh.count++
 	if mh.count%mh.freq == 0 {
 		mh.writer.Refresh()
 		mh.count = 0
 	}
+}
+
+func (mh *mapHandle[K, V]) Delete(k K) {
+	mh.mu.Lock()
+	mh.writer.Delete(k)
+	mh.tick()
 	mh.mu.Unlock()
 }
 

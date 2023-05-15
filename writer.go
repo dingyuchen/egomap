@@ -9,6 +9,7 @@ import (
 
 type Writer[K comparable, V any] interface {
 	Set(K, V)
+	Delete(K)
 	Refresh()
 }
 
@@ -27,6 +28,10 @@ type writer[K comparable, V any] struct {
 
 func (w *writer[K, V]) Set(key K, value V) {
 	w.oplog.AddWrite(key, value)
+}
+
+func (w *writer[K, V]) Delete(key K) {
+	w.oplog.AddDelete(key)
 }
 
 func (w *writer[K, V]) Refresh() {
