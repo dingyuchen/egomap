@@ -49,7 +49,7 @@ func (w *writer[K, V]) Refresh() {
 
 func (w *writer[K, V]) applyWrites() {
 	m := w.innerMap.writeable()
-	for op, err := w.oplog.Poll(); err != nil; op, err = w.oplog.Poll() {
+	for op, err := w.oplog.Poll(); err == nil; op, err = w.oplog.Poll() {
 		switch op.Inst {
 		case oplog.Write:
 			m[op.Payload.Key] = op.Payload.Value
@@ -65,6 +65,7 @@ func NewWriter[K comparable, V any](innerMap *leftRightMap[K, V]) *writer[K, V] 
 		innerMap: innerMap,
 		mu:       new(sync.RWMutex),
 		oplog:    oplog.New[K, V](),
+		readers:  map[int]*reader[K, V]{},
 	}
 }
 
