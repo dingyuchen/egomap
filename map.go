@@ -36,21 +36,9 @@ type pair[K comparable, V any] struct {
 type mapHandle[K comparable, V any] struct {
 	readerHandle ReadHandler[K, V]
 	writer       Writer[K, V]
-	writeChan    chan (pair[K, V])
 	freq         int
+	count        int
 	mu           *sync.Mutex
-}
-
-func (mh *mapHandle[K, V]) bgWrite() {
-	count := 0
-	for p := range mh.writeChan {
-		mh.writer.Set(p.key, p.value)
-		count++
-		if count%mh.freq == 0 {
-			mh.writer.Refresh()
-			mh.freq = 0
-		}
-	}
 }
 
 func (mh *mapHandle[K, V]) Refresh() {
@@ -64,7 +52,14 @@ func (mh *mapHandle[K, V]) Reader() Reader[K, V] {
 }
 
 func (mh *mapHandle[K, V]) Set(k K, v V) {
-	mh.writeChan <- pair[K, V]{k, v}
+	mh.mu.Lock()
+	mh.writer.Set(k, v)
+	mh.count++
+	if mh.count%mh.freq == 0 {
+		mh.writer.Refresh()
+		mh.count = 0
+	}
+	mh.mu.Unlock()
 }
 
 func NewHandle[K comparable, V any](freq int) MapHandle[K, V] {
@@ -75,11 +70,10 @@ func NewHandle[K comparable, V any](freq int) MapHandle[K, V] {
 	mh := &mapHandle[K, V]{
 		readerHandle: readerHandle,
 		writer:       writer,
-		writeChan:    make(chan pair[K, V], freq),
 		mu:           new(sync.Mutex),
 		freq:         freq,
+		count:        0,
 	}
-	go mh.bgWrite()
 	return mh
 }
 
