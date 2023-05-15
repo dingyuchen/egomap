@@ -27,11 +27,6 @@ type MapHandle[K comparable, V any] interface {
 	Reader() Reader[K, V]
 }
 
-type pair[K comparable, V any] struct {
-	key   K
-	value V
-}
-
 type mapHandle[K comparable, V any] struct {
 	readerHandle ReadHandler[K, V]
 	writer       Writer[K, V]

@@ -42,6 +42,13 @@ func (w *writer[K, V]) Refresh() {
 			w.scan.Enqueue(r)
 		}
 	}
+	// sanity check
+	// aboutToWriteTo := w.innerMap.writeable()
+	// for _, r := range w.readers {
+	// 	if cmp.Equal(r.innerMap.readable(), aboutToWriteTo) {
+	// 		panic("invalid state")
+	// 	}
+	// }
 	w.applyWrites()
 	w.innerMap.swap()
 	for _, r := range w.readers {
@@ -61,7 +68,6 @@ func (w *writer[K, V]) applyWrites() {
 		case oplog.Delete:
 			delete(m, op.Payload.Key)
 		}
-
 	}
 }
 
@@ -71,6 +77,7 @@ func NewWriter[K comparable, V any](innerMap *leftRightMap[K, V]) *writer[K, V] 
 		mu:       new(sync.RWMutex),
 		oplog:    oplog.New[K, V](),
 		readers:  map[int]*reader[K, V]{},
+		scan:     *queue.New[*reader[K, V]](),
 	}
 }
 

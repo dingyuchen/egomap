@@ -49,5 +49,9 @@ func TestQueue(t *testing.T) {
 		if peek != nil {
 			t.Errorf("Peek() on empty queue, got %v, want nil", *peek)
 		}
+		queue.Enqueue(6969)
+		if out, _ := queue.Dequeue(); out != 6969 {
+			t.Errorf("Dequeue() = %v, want %v", out, 6969)
+		}
 	}
 }
