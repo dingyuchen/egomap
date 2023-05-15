@@ -65,7 +65,7 @@ func BenchmarkEgomap_100(b *testing.B) {
 					reader := handle.Reader()
 					for p.Next() {
 						if count%100 == 0 {
-							handle.Set(keys[starting], rand.Int())
+							handle.Set(keys[starting], -count)
 						} else {
 							reader.Get(keys[starting])
 						}
