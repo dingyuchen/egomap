@@ -1,6 +1,9 @@
 package egomap
 
-import "sync/atomic"
+import (
+	"sync"
+	"sync/atomic"
+)
 
 type Reader[K comparable, V any] interface {
 	Get(K) (V, bool)
@@ -8,7 +11,7 @@ type Reader[K comparable, V any] interface {
 }
 
 type reader[K comparable, V any] struct {
-	id         uint32
+	id         int
 	innerMap   *leftRightMap[K, V]
 	epoch      *atomic.Uint32
 	removeSelf func()
@@ -31,20 +34,23 @@ type ReadHandler[K comparable, V any] interface {
 }
 
 type readhandler[K comparable, V any] struct {
-	counter  *atomic.Uint32
+	counter  int
+	mu       *sync.Mutex
 	innerMap *leftRightMap[K, V]
 	writer   writeHandler[K, V]
 }
 
 func (rh *readhandler[K, V]) Reader() Reader[K, V] {
-	id := rh.counter.Load()
+	rh.mu.Lock()
+	id := rh.counter
+	rh.counter++
+	rh.mu.Unlock()
 	reader := &reader[K, V]{
 		id:         id,
-		epoch:      &atomic.Uint32{},
+		epoch:      new(atomic.Uint32),
 		innerMap:   rh.innerMap,
 		removeSelf: func() { rh.writer.unregister(id) },
 	}
-	rh.counter.Add(1)
 	rh.writer.register(reader)
 	return reader
 }
@@ -53,5 +59,6 @@ func NewReadHandler[K comparable, V any](innerMap *leftRightMap[K, V], writer *w
 	return &readhandler[K, V]{
 		innerMap: innerMap,
 		writer:   writer,
+		mu:       new(sync.Mutex),
 	}
 }
