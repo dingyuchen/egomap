@@ -21,8 +21,10 @@ writer.Refresh()
 age, ok := reader.Get("alice") // 25, true
 
 reader.Close()
+```
 
-// alt usage
+### alt usage
+```go
 studentScores := egomap.NewHandle[string, int](1) // refresh after every 1 operation
 
 // readers still need to be instanstiated
@@ -50,7 +52,7 @@ The benchmark is set up as such:
 
 ### Results
 
-raw output in `bench.out`
+raw output in [`bench.out`](https://github.com/dingyuchen/egomap/blob/master/bench.out)
 
 ## Features
 
@@ -65,8 +67,8 @@ This map is backed by 2 hashmaps which implies there are 2 copies of data, possi
 
 ## Chores
 
-- [ ] Add tests
 - [ ] Add benchmarks with `sync.Map`
-- [x] Profile and optimize
+- [ ] Add tests
 - [ ] Avoid malloc for oplog and queue
 - [ ] Come up with better way to register and deregister readers
+- [x] Profile and optimize
