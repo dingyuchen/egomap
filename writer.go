@@ -15,14 +15,14 @@ type Writer[K comparable, V any] interface {
 
 type writeHandler[K comparable, V any] interface {
 	register(*reader[K, V])
-	unregister(int)
+	unregister(uint32)
 }
 
 type writer[K comparable, V any] struct {
 	mu       *sync.RWMutex
 	innerMap *leftRightMap[K, V]
 	oplog    oplog.Log[K, V]
-	readers  map[int]*reader[K, V]
+	readers  map[uint32]*reader[K, V]
 	scan     queue.Queue[*reader[K, V]]
 }
 
@@ -76,7 +76,7 @@ func NewWriter[K comparable, V any](innerMap *leftRightMap[K, V]) *writer[K, V] 
 		innerMap: innerMap,
 		mu:       new(sync.RWMutex),
 		oplog:    oplog.New[K, V](),
-		readers:  map[int]*reader[K, V]{},
+		readers:  map[uint32]*reader[K, V]{},
 		scan:     *queue.New[*reader[K, V]](),
 	}
 }
@@ -87,7 +87,7 @@ func (w *writer[K, V]) register(r *reader[K, V]) {
 	w.mu.Unlock()
 }
 
-func (w *writer[K, V]) unregister(id int) {
+func (w *writer[K, V]) unregister(id uint32) {
 	w.mu.Lock()
 	delete(w.readers, id)
 	w.mu.Unlock()
