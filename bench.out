@@ -1,0 +1,22 @@
+// go test -benchmem -run=^\$ -bench ^BenchmarkEgomap\$ github.com/dingyuchen/egomap -cpu 1,2,4,8 -benchtime=8s
+goos: darwin
+goarch: arm64
+pkg: github.com/dingyuchen/egomap
+BenchmarkEgomap/write_per:100           	260231272	        36.22 ns/op	       1 B/op	       0 allocs/op
+BenchmarkEgomap/write_per:100-2         	417790134	        21.83 ns/op	       1 B/op	       0 allocs/op
+BenchmarkEgomap/write_per:100-4         	470785731	        25.89 ns/op	       2 B/op	       0 allocs/op
+BenchmarkEgomap/write_per:100-8         	442578885	        23.71 ns/op	       3 B/op	       0 allocs/op
+BenchmarkEgomap/write_per:1000          	272169122	        35.17 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEgomap/write_per:1000-2        	537850768	        17.52 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEgomap/write_per:1000-4        	676627142	        14.02 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEgomap/write_per:1000-8        	1000000000	        17.38 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEgomap/write_per:10000         	278864442	        33.90 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEgomap/write_per:10000-2       	577193954	        22.28 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEgomap/write_per:10000-4       	596538028	        15.98 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEgomap/write_per:10000-8       	1000000000	         8.943 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEgomap/write_per:100000        	293815455	        32.89 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEgomap/write_per:100000-2      	649710958	        14.54 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEgomap/write_per:100000-4      	1000000000	         7.372 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEgomap/write_per:100000-8      	1000000000	         3.774 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/dingyuchen/egomap	191.628s

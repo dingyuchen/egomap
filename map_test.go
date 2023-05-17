@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"testing"
+	"time"
 )
 
 func TestNew(t *testing.T) {
@@ -38,45 +39,65 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func BenchmarkEgomap_100(b *testing.B) {
-	sizes := []int{
+const (
+	read = iota
+	write
+)
+
+type op int
+
+type operation struct {
+	do  op
+	key uint64
+}
+
+func BenchmarkEgomap(b *testing.B) {
+	writeFreq := []int{
 		100, 1000, 10000, 100000,
 	}
-	concurrency := []int{2, 4, 8, 16, 32}
+	// concurrency := []int{2, 4, 8, 16} // i only have 10 cores, so 16 is not very useful
+	size := 1000000
 
-	for _, size := range sizes {
+	for _, freq := range writeFreq {
 		// setup
-		zipf := rand.NewZipf(rand.New(rand.NewSource(0)), 1.2, 10, uint64(size))
-		keys := make([]uint64, 0, 1000000)
-		for i := 0; i < cap(keys); i++ {
-			keys = append(keys, zipf.Uint64())
+		zipf := rand.NewZipf(rand.New(rand.NewSource(time.Now().UnixNano())), 1.2, 100, uint64(size))
+		keys := make([]operation, 0, size)
+		for i := 0; i < size; i++ {
+			var do op = read
+			if rand.Int31n(int32(freq)) == 0 {
+				do = write
+			}
+			op := operation{
+				do:  do,
+				key: zipf.Uint64(),
+			}
+			keys = append(keys, op)
 		}
 		handle := NewHandle[uint64, int](1)
 
 		for i := 0; i < size; i++ {
-			handle.Set(keys[i], rand.Int())
+			handle.Set(uint64(i), rand.Int())
 		}
-		for _, conc := range concurrency {
-			b.Run(fmt.Sprintf("size:%d|conc:%d", size, conc), func(b *testing.B) {
-				b.SetParallelism(conc)
-				b.RunParallel(func(p *testing.PB) {
-					count := 0
-					starting := rand.Int() % size
-					reader := handle.Reader()
-					for p.Next() {
-						if count%100 == 0 {
-							handle.Set(keys[starting], -count)
-						} else {
-							reader.Get(keys[starting])
-						}
-						starting++
-						count++
-						starting %= 1000000
-						count %= 100
+		b.ResetTimer()
+		// for _, conc := range concurrency {
+		b.Run(fmt.Sprintf("write_per:%d", freq), func(b *testing.B) {
+			// b.SetParallelism(conc)
+			b.RunParallel(func(p *testing.PB) {
+				idx := rand.Int() % size
+				reader := handle.Reader()
+				for p.Next() {
+					action := keys[idx]
+					if action.do == write {
+						handle.Set(action.key, idx)
+					} else {
+						reader.Get(action.key)
 					}
-					reader.Close()
-				})
+					idx++
+					idx %= size
+				}
+				reader.Close()
 			})
-		}
+		})
+		// }
 	}
 }

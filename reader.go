@@ -11,7 +11,7 @@ type Reader[K comparable, V any] interface {
 }
 
 type reader[K comparable, V any] struct {
-	id         int
+	id         uint32
 	innerMap   *leftRightMap[K, V]
 	epoch      *atomic.Uint32
 	removeSelf func()
@@ -34,7 +34,7 @@ type ReadHandler[K comparable, V any] interface {
 }
 
 type readhandler[K comparable, V any] struct {
-	counter  int
+	counter  uint32
 	mu       *sync.Mutex
 	innerMap *leftRightMap[K, V]
 	writer   writeHandler[K, V]
@@ -55,7 +55,7 @@ func (rh *readhandler[K, V]) Reader() Reader[K, V] {
 	return reader
 }
 
-func NewReadHandler[K comparable, V any](innerMap *leftRightMap[K, V], writer *writer[K, V]) ReadHandler[K, V] {
+func newReadHandler[K comparable, V any](innerMap *leftRightMap[K, V], writer writeHandler[K, V]) ReadHandler[K, V] {
 	return &readhandler[K, V]{
 		innerMap: innerMap,
 		writer:   writer,

@@ -48,11 +48,12 @@ studentScores.Refresh()
 
 As with `evmap` and other implementations, this library assumes a singular writer. A synchronized handle for multiple writers is provided.
 
-This map is backed by 2 hashmaps that copies data, possibly leading high memory usage. Please pass pointers into the map if you want to avoid duplicate data.
+This map is backed by 2 hashmaps which implies there are 2 copies of data, possibly leading high memory usage. Please pass pointers into the map if you want to avoid duplicate data.
 
 ## Chores
 
 - [ ] Add tests
 - [ ] Add benchmarks with `sync.Map`
-- [ ] Profile and optimize
+- [x] Profile and optimize
 - [ ] Avoid malloc for oplog and queue
+- [ ] Come up with better way to register and deregister readers
