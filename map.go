@@ -91,6 +91,6 @@ func New[K comparable, V any]() (ReadHandler[K, V], Writer[K, V]) {
 		ptr: new(atomic.Int32),
 	}
 	writer := newWriter(innerMap)
-	var writerHandler writeHandler[K, V] = writer // ? the compiler demands
-	return newReadHandler(innerMap, writerHandler), writer
+	// var writerHandler writeHandler[K, V] = writer // ? the compiler demands
+	return newReadHandler(innerMap, writer), writer
 }

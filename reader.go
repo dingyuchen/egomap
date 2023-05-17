@@ -55,7 +55,7 @@ func (rh *readhandler[K, V]) Reader() Reader[K, V] {
 	return reader
 }
 
-func newReadHandler[K comparable, V any](innerMap *leftRightMap[K, V], writer writeHandler[K, V]) ReadHandler[K, V] {
+func newReadHandler[K comparable, V any](innerMap *leftRightMap[K, V], writer *writer[K, V]) ReadHandler[K, V] {
 	return &readhandler[K, V]{
 		innerMap: innerMap,
 		writer:   writer,
