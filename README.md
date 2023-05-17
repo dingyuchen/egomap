@@ -39,6 +39,19 @@ studentScores.Refresh()
 
 ```
 
+## Benchmarks
+
+The benchmark is set up as such:
+- Initialize array of size 1M
+- Generate a random array of keys [0, 1M) over a zipfian distribution
+    - For each key, pair with a randomly selected read or write operation (99%, 99.9%, 99.99%, 99.999% reads)
+- Initialize `GOMAXPROCS` goroutines (1, 2, 4, 8) with random start indices
+- Run benchmark for `benchtime` time (8s)
+
+### Results
+
+raw output in `bench.out`
+
 ## Features
 
 - zero dependencies
