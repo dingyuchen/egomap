@@ -3,6 +3,7 @@ package egomap
 import (
 	"fmt"
 	"math/rand"
+	"sync"
 	"testing"
 	"time"
 )
@@ -51,37 +52,44 @@ type operation struct {
 	key uint64
 }
 
-func BenchmarkEgomap(b *testing.B) {
-	writeFreq := []int{
-		100, 1000, 10000, 100000,
-	}
-	// concurrency := []int{2, 4, 8, 16} // i only have 10 cores, so 16 is not very useful
-	size := 1000000
+const (
+	size = 1000000
+)
 
+var (
+	writeFreq = []int{
+		2, 100, 1000, 10000, 100000,
+	}
+)
+
+func gen(freq int) []operation {
+	zipf := rand.NewZipf(rand.New(rand.NewSource(time.Now().UnixNano())), 1.2, 100, uint64(size))
+	keys := make([]operation, 0, size)
+	for i := 0; i < size; i++ {
+		var do op = read
+		if rand.Int31n(int32(freq)) == 0 {
+			do = write
+		}
+		op := operation{
+			do:  do,
+			key: zipf.Uint64(),
+		}
+		keys = append(keys, op)
+	}
+	return keys
+}
+
+func BenchmarkEgomap(b *testing.B) {
 	for _, freq := range writeFreq {
 		// setup
-		zipf := rand.NewZipf(rand.New(rand.NewSource(time.Now().UnixNano())), 1.2, 100, uint64(size))
-		keys := make([]operation, 0, size)
-		for i := 0; i < size; i++ {
-			var do op = read
-			if rand.Int31n(int32(freq)) == 0 {
-				do = write
-			}
-			op := operation{
-				do:  do,
-				key: zipf.Uint64(),
-			}
-			keys = append(keys, op)
-		}
+		keys := gen(freq)
 		handle := NewHandle[uint64, int](1)
-
 		for i := 0; i < size; i++ {
 			handle.Set(uint64(i), rand.Int())
 		}
 		b.ResetTimer()
-		// for _, conc := range concurrency {
+
 		b.Run(fmt.Sprintf("write_per:%d", freq), func(b *testing.B) {
-			// b.SetParallelism(conc)
 			b.RunParallel(func(p *testing.PB) {
 				idx := rand.Int() % size
 				reader := handle.Reader()
@@ -98,6 +106,33 @@ func BenchmarkEgomap(b *testing.B) {
 				reader.Close()
 			})
 		})
-		// }
+	}
+}
+
+func BenchmarkSyncMap(b *testing.B) {
+	for _, freq := range writeFreq {
+		// setup
+		keys := gen(freq)
+		cmap := new(sync.Map)
+		for i := 0; i < size; i++ {
+			cmap.Store(uint64(i), rand.Int())
+		}
+		b.ResetTimer()
+
+		b.Run(fmt.Sprintf("write_per:%d", freq), func(b *testing.B) {
+			b.RunParallel(func(p *testing.PB) {
+				idx := rand.Int() % size
+				for p.Next() {
+					action := keys[idx]
+					if action.do == write {
+						cmap.Store(action.key, idx)
+					} else {
+						cmap.Load(action.key)
+					}
+					idx++
+					idx %= size
+				}
+			})
+		})
 	}
 }

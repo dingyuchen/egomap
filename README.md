@@ -47,12 +47,17 @@ The benchmark is set up as such:
 - Initialize array of size 1M
 - Generate a random array of keys [0, 1M) over a zipfian distribution
     - For each key, pair with a randomly selected read or write operation (99%, 99.9%, 99.99%, 99.999% reads)
-- Initialize `GOMAXPROCS` goroutines (1, 2, 4, 8) with random start indices
-- Run benchmark for `benchtime` time (8s)
+- Initialize `GOMAXPROCS` goroutines (using `-cpu 1, 2, 4, 8`) with random start indices
 
 ### Results
 
+
 raw output in [`bench.out`](https://github.com/dingyuchen/egomap/blob/master/bench.out)
+
+Test Specs:
+- Macbook M1 Pro (10 cores)
+- 16GB RAM
+- `go v1.19.9`
 
 ## Features
 
@@ -67,8 +72,8 @@ This map is backed by 2 hashmaps which implies there are 2 copies of data, possi
 
 ## Chores
 
-- [ ] Add benchmarks with `sync.Map`
 - [ ] Add tests
 - [ ] Avoid malloc for oplog and queue
 - [ ] Come up with better way to register and deregister readers
+- [x] Add benchmarks with `sync.Map`
 - [x] Profile and optimize
