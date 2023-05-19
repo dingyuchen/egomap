@@ -127,6 +127,10 @@ func (w *syncMapWrapper[K, V]) Reader() Reader[K, V] {
 	return w
 }
 
+func (w *syncMapWrapper[K, V]) Writer() Writer[K, V] {
+	return w
+}
+
 func (w *syncMapWrapper[K, V]) Close() {}
 
 func (w *syncMapWrapper[K, V]) Get(key K) (V, bool) {
@@ -172,8 +176,10 @@ func mapTestWrite(b *testing.B, m MapHandle[uint64, int]) {
 	}
 
 	id := rand.Int() % size
+	w := m.Writer()
 	for i := 0; i < b.N; i++ {
-		m.Set(keys[id].key, i)
+		w.Set(keys[id].key, i)
+		w.Refresh()
 		id = (id + 1) % size
 	}
 }

@@ -25,6 +25,7 @@ func (m *leftRightMap[K, V]) swap() {
 type MapHandle[K comparable, V any] interface {
 	Writer[K, V]
 	Reader() Reader[K, V]
+	Writer() Writer[K, V]
 }
 
 type mapHandle[K comparable, V any] struct {
@@ -43,6 +44,10 @@ func (mh *mapHandle[K, V]) Refresh() {
 
 func (mh *mapHandle[K, V]) Reader() Reader[K, V] {
 	return mh.readerHandle.Reader()
+}
+
+func (mh *mapHandle[K, V]) Writer() Writer[K, V] {
+	return mh.writer
 }
 
 func (mh *mapHandle[K, V]) Set(k K, v V) {
