@@ -61,14 +61,7 @@ func (w *writer[K, V]) Refresh() {
 
 func (w *writer[K, V]) applyWrites() {
 	m := w.innerMap.writeable()
-	for _, op := range w.oplog.Poll() {
-		switch op.Inst {
-		case oplog.Write:
-			m[op.Payload.Key] = op.Payload.Value
-		case oplog.Delete:
-			delete(m, op.Payload.Key)
-		}
-	}
+	w.oplog.Apply(m)
 }
 
 func newWriter[K comparable, V any](innerMap *leftRightMap[K, V]) *writer[K, V] {

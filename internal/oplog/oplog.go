@@ -5,18 +5,18 @@ import "github.com/dingyuchen/egomap/internal/queue"
 type Log[K comparable, V any] interface {
 	AddWrite(K, V)
 	AddDelete(K)
-	Poll() []Operation[K, V]
+	Apply(map[K]V)
 }
 
+type Op int
+
 const (
-	Write = iota
+	Write Op = iota
 	Delete
 )
 
-type op int
-
 type Operation[K comparable, V any] struct {
-	Inst    op
+	Inst    Op
 	Payload opsData[K, V]
 }
 
@@ -61,6 +61,29 @@ func (l *oplog[K, V]) Poll() []Operation[K, V] {
 		l.backLog.Enqueue(op)
 	}
 	return ops
+}
+
+func (l *oplog[K, V]) Apply(m map[K]V) {
+	// pop backlog
+	for op, err := l.backLog.Dequeue(); err == nil; op, err = l.backLog.Dequeue() {
+		switch op.Inst {
+		case Write:
+			m[op.Payload.Key] = op.Payload.Value
+		case Delete:
+			delete(m, op.Payload.Key)
+		}
+	}
+
+	for iter := l.queue.Iter(); iter.HasNext(); {
+		op := iter.Next()
+		switch op.Inst {
+		case Write:
+			m[op.Payload.Key] = op.Payload.Value
+		case Delete:
+			delete(m, op.Payload.Key)
+		}
+	}
+	l.backLog, l.queue = l.queue, l.backLog
 }
 
 func New[K comparable, V any]() Log[K, V] {

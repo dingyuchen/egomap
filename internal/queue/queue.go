@@ -60,6 +60,13 @@ func (q *Queue[V]) Peek() *V {
 	return &q.head.arr[q.ptr]
 }
 
+func (q *Queue[V]) Iter() QueueIter[V] {
+	return &queueIter[V]{
+		q.head,
+		q.ptr,
+	}
+}
+
 func (q *Queue[V]) Len() int {
 	return q.len
 }
@@ -70,6 +77,34 @@ func New[V any]() *Queue[V] {
 		head: start,
 		tail: start,
 	}
+}
+
+type QueueIter[T any] interface {
+	HasNext() bool
+	Next() T
+}
+
+type queueIter[T any] struct {
+	node *node[T]
+	ptr  int
+}
+
+func (i *queueIter[T]) HasNext() bool {
+	return i.node != nil && i.ptr < len(i.node.arr)
+}
+
+func (i *queueIter[T]) Next() T {
+	if i.node == nil {
+		var empty T
+		return empty
+	}
+	v := i.node.arr[i.ptr]
+	i.ptr++
+	if i.ptr >= len(i.node.arr) {
+		i.ptr = 0
+		i.node = i.node.next
+	}
+	return v
 }
 
 type node[V any] struct {
