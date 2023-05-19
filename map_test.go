@@ -1,8 +1,10 @@
 package egomap
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -79,24 +81,23 @@ func gen(freq int) []operation {
 	return keys
 }
 
-func BenchmarkEgomap(b *testing.B) {
+func mapTester(b *testing.B, m MapHandle[uint64, int]) {
 	for _, freq := range writeFreq {
 		// setup
 		keys := gen(freq)
-		handle := NewHandle[uint64, int](1)
 		for i := 0; i < size; i++ {
-			handle.Set(uint64(i), rand.Int())
+			m.Set(uint64(i), rand.Int())
 		}
 		b.ResetTimer()
 
 		b.Run(fmt.Sprintf("write_per:%d", freq), func(b *testing.B) {
 			b.RunParallel(func(p *testing.PB) {
 				idx := rand.Int() % size
-				reader := handle.Reader()
+				reader := m.Reader()
 				for p.Next() {
 					action := keys[idx]
 					if action.do == write {
-						handle.Set(action.key, idx)
+						m.Set(action.key, idx)
 					} else {
 						reader.Get(action.key)
 					}
@@ -109,30 +110,82 @@ func BenchmarkEgomap(b *testing.B) {
 	}
 }
 
-func BenchmarkSyncMap(b *testing.B) {
-	for _, freq := range writeFreq {
-		// setup
-		keys := gen(freq)
-		cmap := new(sync.Map)
-		for i := 0; i < size; i++ {
-			cmap.Store(uint64(i), rand.Int())
-		}
-		b.ResetTimer()
+func BenchmarkEgomap(b *testing.B) {
+	m := NewHandle[uint64, int](1)
+	mapTester(b, m)
+}
 
-		b.Run(fmt.Sprintf("write_per:%d", freq), func(b *testing.B) {
-			b.RunParallel(func(p *testing.PB) {
-				idx := rand.Int() % size
-				for p.Next() {
-					action := keys[idx]
-					if action.do == write {
-						cmap.Store(action.key, idx)
-					} else {
-						cmap.Load(action.key)
-					}
-					idx++
-					idx %= size
-				}
-			})
-		})
+type syncMapWrapper[K comparable, V any] struct {
+	m *sync.Map
+}
+
+func (w *syncMapWrapper[K, V]) Set(key K, val V) {
+	w.m.Store(key, val)
+}
+
+func (w *syncMapWrapper[K, V]) Reader() Reader[K, V] {
+	return w
+}
+
+func (w *syncMapWrapper[K, V]) Close() {}
+
+func (w *syncMapWrapper[K, V]) Get(key K) (V, bool) {
+	v, ok := w.m.Load(key)
+	return v.(V), ok
+}
+
+func (w *syncMapWrapper[K, V]) Delete(key K) {
+	w.m.Delete(key)
+}
+
+func (w *syncMapWrapper[K, V]) Refresh() {}
+
+func BenchmarkSyncMap(b *testing.B) {
+	mapTester(b, &syncMapWrapper[uint64, int]{
+		m: new(sync.Map),
+	})
+}
+
+func mapTestWrite(b *testing.B, m MapHandle[uint64, int]) {
+	keys := gen(size)
+	for i := 0; i < size; i++ {
+		m.Set(uint64(i), rand.Int())
 	}
+	b.ResetTimer()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
+		go func() {
+			r := m.Reader()
+			idx := rand.Int() % size
+			for i := 0; ; idx = (idx + 1) % size {
+				select {
+				case <-ctx.Done():
+					r.Close()
+					return
+				default:
+					r.Get(keys[i].key)
+				}
+			}
+		}()
+	}
+
+	id := rand.Int() % size
+	for i := 0; i < b.N; i++ {
+		m.Set(keys[id].key, i)
+		id = (id + 1) % size
+	}
+}
+
+func BenchmarkEgomap_Write(b *testing.B) {
+	m := NewHandle[uint64, int](1)
+	mapTestWrite(b, m)
+}
+
+func BenchmarkSyncMap_Write(b *testing.B) {
+	m := &syncMapWrapper[uint64, int]{
+		m: new(sync.Map),
+	}
+	mapTestWrite(b, m)
 }
