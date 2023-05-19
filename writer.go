@@ -37,7 +37,7 @@ func (w *writer[K, V]) Delete(key K) {
 func (w *writer[K, V]) Refresh() {
 	w.mu.RLock()
 	for w.scan.Len() > 0 {
-		r, _ := w.scan.Dequeue()
+		r := w.scan.Dequeue()
 		if epoch := r.epoch.Load(); epoch%2 != 0 {
 			w.scan.Enqueue(r)
 		}
@@ -70,7 +70,7 @@ func newWriter[K comparable, V any](innerMap *leftRightMap[K, V]) *writer[K, V] 
 		mu:       new(sync.RWMutex),
 		oplog:    oplog.New[K, V](),
 		readers:  map[uint32]*reader[K, V]{},
-		scan:     *queue.New[*reader[K, V]](),
+		scan:     queue.New[*reader[K, V]](),
 	}
 }
 

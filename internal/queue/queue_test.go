@@ -17,10 +17,13 @@ func TestQueue(t *testing.T) {
 		wantLength int
 	}
 	tests := []args{
+		{inputs: []int{}, wantLength: 0, peek: 0},
+		{inputs: []int{3}, wantLength: 1, peek: 0},
+		{inputs: []int{4, 3}, wantLength: 2, peek: 1},
 		{inputs: []int{1, 2, 3, 4, 5}, wantLength: 5, peek: 0},
 		{inputs: []int{1, 2, 3, 4, 5}, wantLength: 5, peek: 1},
-		{inputs: genArray(maxInternalSlice), wantLength: maxInternalSlice, peek: maxInternalSlice - 1},
-		{inputs: genArray(maxInternalSlice * 2), wantLength: maxInternalSlice * 2, peek: maxInternalSlice + initialInternalSize},
+		{inputs: genArray(1093), wantLength: 1093, peek: 253},
+		{inputs: genArray(203), wantLength: 203, peek: 100},
 	}
 
 	queue := New[int]()
@@ -33,24 +36,24 @@ func TestQueue(t *testing.T) {
 		}
 		for i, input := range test.inputs {
 			if i == test.peek {
-				if out := queue.Peek(); *out != input {
-					t.Errorf("Peek() = %v, want %v", *out, input)
+				if out := queue.Peek(); out != input {
+					t.Errorf("Peek() = %v, want %v", out, input)
 				}
 			}
-			if out, _ := queue.Dequeue(); out != input {
+			if out := queue.Dequeue(); out != input {
 				t.Errorf("Dequeue() = %v, want %v", out, input)
 			}
 		}
-		_, err := queue.Dequeue()
-		if err != ErrEmpty {
-			t.Errorf("Dequeue() on empty queue, got %v, want %v", err, ErrEmpty)
+		e := queue.Dequeue()
+		if e != 0 {
+			t.Errorf("Dequeue() on empty queue, got %v, want %v", e, 0)
 		}
 		peek := queue.Peek()
-		if peek != nil {
-			t.Errorf("Peek() on empty queue, got %v, want nil", *peek)
+		if peek != 0 {
+			t.Errorf("Peek() on empty queue, got %v, want zero", peek)
 		}
 		queue.Enqueue(6969)
-		if out, _ := queue.Dequeue(); out != 6969 {
+		if out := queue.Dequeue(); out != 6969 {
 			t.Errorf("Dequeue() = %v, want %v", out, 6969)
 		}
 	}
