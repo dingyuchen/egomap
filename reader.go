@@ -14,7 +14,7 @@ type reader[K comparable, V any] struct {
 	id         uint32
 	innerMap   *leftRightMap[K, V]
 	epoch      *atomic.Uint32
-	removeSelf func()
+	removeSelf func(uint32)
 }
 
 func (r *reader[K, V]) Get(key K) (V, bool) {
@@ -26,7 +26,7 @@ func (r *reader[K, V]) Get(key K) (V, bool) {
 }
 
 func (r *reader[K, V]) Close() {
-	r.removeSelf()
+	r.removeSelf(r.id)
 }
 
 type ReadHandler[K comparable, V any] interface {
@@ -49,7 +49,7 @@ func (rh *readhandler[K, V]) Reader() Reader[K, V] {
 		id:         id,
 		epoch:      new(atomic.Uint32),
 		innerMap:   rh.innerMap,
-		removeSelf: func() { rh.writer.unregister(id) },
+		removeSelf: rh.writer.unregister,
 	}
 	rh.writer.register(reader)
 	return reader

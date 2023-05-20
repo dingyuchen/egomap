@@ -65,7 +65,7 @@ var (
 )
 
 func gen(freq int) []operation {
-	zipf := rand.NewZipf(rand.New(rand.NewSource(time.Now().UnixNano())), 1.2, 100, uint64(size))
+	zipf := rand.NewZipf(rand.New(rand.NewSource(time.Now().UnixNano())), 1.2, 100, uint64(size-1))
 	keys := make([]operation, 0, size)
 	for i := 0; i < size; i++ {
 		var do op = read
@@ -88,6 +88,7 @@ func mapTester(b *testing.B, m MapHandle[uint64, int]) {
 		for i := 0; i < size; i++ {
 			m.Set(uint64(i), rand.Int())
 		}
+		runtime.GC()
 		b.ResetTimer()
 
 		b.Run(fmt.Sprintf("write_per:%d", freq), func(b *testing.B) {
@@ -151,25 +152,25 @@ func BenchmarkSyncMap(b *testing.B) {
 }
 
 func mapTestWrite(b *testing.B, m MapHandle[uint64, int]) {
-	keys := gen(size)
+	keys := gen(1)
 	for i := 0; i < size; i++ {
 		m.Set(uint64(i), rand.Int())
 	}
-	b.ResetTimer()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
+	conc := runtime.GOMAXPROCS(0)
+	for i := 0; i < conc; i++ {
 		go func() {
 			r := m.Reader()
 			idx := rand.Int() % size
-			for i := 0; ; idx = (idx + 1) % size {
+			for ; ; idx = (idx + 1) % size {
 				select {
 				case <-ctx.Done():
 					r.Close()
 					return
 				default:
-					r.Get(keys[i].key)
+					r.Get(keys[idx].key)
 				}
 			}
 		}()
@@ -177,13 +178,14 @@ func mapTestWrite(b *testing.B, m MapHandle[uint64, int]) {
 
 	id := rand.Int() % size
 	w := m.Writer()
+	runtime.GC()
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		w.Set(keys[id].key, i)
 		w.Refresh()
 		id = (id + 1) % size
 	}
 }
-
 func BenchmarkEgomap_Write(b *testing.B) {
 	m := NewHandle[uint64, int](1)
 	mapTestWrite(b, m)
@@ -194,4 +196,52 @@ func BenchmarkSyncMap_Write(b *testing.B) {
 		m: new(sync.Map),
 	}
 	mapTestWrite(b, m)
+}
+
+func mapTestRead(b *testing.B, m MapHandle[uint64, int]) {
+	keys := gen(size)
+	for i := 0; i < size; i++ {
+		m.Set(uint64(i), rand.Int())
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		w := m.Writer()
+		idx := rand.Int() % size
+		for ; ; idx = (idx + 1) % size {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				w.Set(keys[idx].key, idx)
+			}
+		}
+	}()
+
+	runtime.GC()
+	b.ResetTimer()
+	b.RunParallel(func(p *testing.PB) {
+		idx := rand.Int() % size
+		reader := m.Reader()
+		for p.Next() {
+			action := keys[idx]
+			reader.Get(action.key)
+			idx++
+			idx %= size
+		}
+		reader.Close()
+	})
+}
+
+func BenchmarkEgomap_Read(b *testing.B) {
+	m := NewHandle[uint64, int](1)
+	mapTestRead(b, m)
+}
+
+func BenchmarkSyncMap_Read(b *testing.B) {
+	m := &syncMapWrapper[uint64, int]{
+		m: new(sync.Map),
+	}
+	mapTestRead(b, m)
 }

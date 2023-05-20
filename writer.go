@@ -2,6 +2,7 @@ package egomap
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/dingyuchen/egomap/internal/oplog"
 	"github.com/dingyuchen/egomap/internal/queue"
@@ -23,7 +24,12 @@ type writer[K comparable, V any] struct {
 	innerMap *leftRightMap[K, V]
 	oplog    oplog.Log[K, V]
 	readers  map[uint32]*reader[K, V]
-	scan     queue.Queue[*reader[K, V]]
+	seen     queue.Queue[scan]
+}
+
+type scan struct {
+	past  uint32
+	epoch *atomic.Uint32
 }
 
 func (w *writer[K, V]) Set(key K, value V) {
@@ -36,24 +42,20 @@ func (w *writer[K, V]) Delete(key K) {
 
 func (w *writer[K, V]) Refresh() {
 	w.mu.RLock()
-	for w.scan.Len() > 0 {
-		r := w.scan.Dequeue()
-		if epoch := r.epoch.Load(); epoch%2 != 0 {
-			w.scan.Enqueue(r)
+	for w.seen.Len() > 0 {
+		r := w.seen.Dequeue()
+		if epoch := r.epoch.Load(); r.past == epoch {
+			w.seen.Enqueue(r)
 		}
 	}
-	// sanity check
-	// aboutToWriteTo := w.innerMap.writeable()
-	// for _, r := range w.readers {
-	// 	if cmp.Equal(r.innerMap.readable(), aboutToWriteTo) {
-	// 		panic("invalid state")
-	// 	}
-	// }
 	w.applyWrites()
 	w.innerMap.swap()
 	for _, r := range w.readers {
 		if epoch := r.epoch.Load(); epoch%2 != 0 {
-			w.scan.Enqueue(r)
+			w.seen.Enqueue(scan{
+				past:  epoch,
+				epoch: r.epoch,
+			})
 		}
 	}
 	w.mu.RUnlock()
@@ -70,7 +72,7 @@ func newWriter[K comparable, V any](innerMap *leftRightMap[K, V]) *writer[K, V] 
 		mu:       new(sync.RWMutex),
 		oplog:    oplog.New[K, V](),
 		readers:  map[uint32]*reader[K, V]{},
-		scan:     queue.New[*reader[K, V]](),
+		seen:     queue.New[scan](),
 	}
 }
 
