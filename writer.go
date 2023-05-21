@@ -42,6 +42,7 @@ func (w *writer[K, V]) Delete(key K) {
 
 func (w *writer[K, V]) Refresh() {
 	w.mu.RLock()
+	// TODO: switch to list with switching lookout
 	for w.seen.Len() > 0 {
 		r := w.seen.Dequeue()
 		if epoch := r.epoch.Load(); r.past == epoch {

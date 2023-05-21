@@ -1,7 +1,5 @@
 package oplog
 
-import "github.com/dingyuchen/egomap/internal/queue"
-
 type Log[K comparable, V any] interface {
 	AddWrite(K, V)
 	AddDelete(K)
@@ -26,8 +24,8 @@ type opsData[K comparable, V any] struct {
 }
 
 type oplog[K comparable, V any] struct {
-	queue   queue.Queue[Operation[K, V]]
-	backLog queue.Queue[Operation[K, V]]
+	queue   []Operation[K, V]
+	backLog []Operation[K, V]
 }
 
 func (l *oplog[K, V]) AddWrite(key K, value V) {
@@ -38,7 +36,7 @@ func (l *oplog[K, V]) AddWrite(key K, value V) {
 			value,
 		},
 	}
-	l.queue.Enqueue(op)
+	l.queue = append(l.queue, op)
 }
 
 func (l *oplog[K, V]) AddDelete(key K) {
@@ -48,13 +46,12 @@ func (l *oplog[K, V]) AddDelete(key K) {
 			Key: key,
 		},
 	}
-	l.queue.Enqueue(op)
+	l.queue = append(l.queue, op)
 }
 
 func (l *oplog[K, V]) Apply(m map[K]V) {
 	// pop backlog
-	for l.backLog.Len() > 0 {
-		op := l.backLog.Dequeue()
+	for _, op := range l.backLog {
 		switch op.Inst {
 		case Write:
 			m[op.Payload.Key] = op.Payload.Value
@@ -62,9 +59,9 @@ func (l *oplog[K, V]) Apply(m map[K]V) {
 			delete(m, op.Payload.Key)
 		}
 	}
+	l.backLog = l.backLog[:0]
 
-	for iter := l.queue.Iter(); iter.HasNext(); {
-		op := iter.Next()
+	for _, op := range l.queue {
 		switch op.Inst {
 		case Write:
 			m[op.Payload.Key] = op.Payload.Value
@@ -77,7 +74,7 @@ func (l *oplog[K, V]) Apply(m map[K]V) {
 
 func New[K comparable, V any]() Log[K, V] {
 	return &oplog[K, V]{
-		queue:   queue.New[Operation[K, V]](),
-		backLog: queue.New[Operation[K, V]](),
+		queue:   make([]Operation[K, V], 0, 2),
+		backLog: make([]Operation[K, V], 0, 2),
 	}
 }
