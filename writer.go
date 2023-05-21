@@ -5,7 +5,6 @@ import (
 	"sync/atomic"
 
 	"github.com/dingyuchen/egomap/internal/oplog"
-	"github.com/dingyuchen/egomap/internal/queue"
 )
 
 type Writer[K comparable, V any] interface {
@@ -24,7 +23,7 @@ type writer[K comparable, V any] struct {
 	innerMap *leftRightMap[K, V]
 	oplog    oplog.Log[K, V]
 	readers  map[uint32]*reader[K, V]
-	seen     queue.Queue[scan]
+	seen     []scan
 }
 
 type scan struct {
@@ -43,17 +42,21 @@ func (w *writer[K, V]) Delete(key K) {
 func (w *writer[K, V]) Refresh() {
 	w.mu.RLock()
 	// TODO: switch to list with switching lookout
-	for w.seen.Len() > 0 {
-		r := w.seen.Dequeue()
-		if epoch := r.epoch.Load(); r.past == epoch {
-			w.seen.Enqueue(r)
+	for len(w.seen) > 0 {
+		for i := len(w.seen) - 1; i >= 0; i-- {
+			r := w.seen[i]
+			if epoch := r.epoch.Load(); r.past != epoch {
+				w.seen[i] = w.seen[len(w.seen)-1]
+				w.seen[len(w.seen)-1].epoch = nil
+				w.seen = w.seen[:len(w.seen)-1]
+			}
 		}
 	}
 	w.applyWrites()
 	w.innerMap.swap()
 	for _, r := range w.readers {
 		if epoch := r.epoch.Load(); epoch%2 != 0 {
-			w.seen.Enqueue(scan{
+			w.seen = append(w.seen, scan{
 				past:  epoch,
 				epoch: r.epoch,
 			})
@@ -73,7 +76,7 @@ func newWriter[K comparable, V any](innerMap *leftRightMap[K, V]) *writer[K, V] 
 		mu:       new(sync.RWMutex),
 		oplog:    oplog.New[K, V](),
 		readers:  map[uint32]*reader[K, V]{},
-		seen:     queue.New[scan](),
+		seen:     []scan{},
 	}
 }
 
