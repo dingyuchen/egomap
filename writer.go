@@ -41,17 +41,17 @@ func (w *writer[K, V]) Delete(key K) {
 
 func (w *writer[K, V]) Refresh() {
 	w.mu.RLock()
-	// TODO: switch to list with switching lookout
-	for len(w.seen) > 0 {
-		for i := len(w.seen) - 1; i >= 0; i-- {
+	l := len(w.seen)
+	for l > 0 {
+		for i := l - 1; i >= 0; i-- {
 			r := w.seen[i]
 			if epoch := r.epoch.Load(); r.past != epoch {
-				w.seen[i] = w.seen[len(w.seen)-1]
-				w.seen[len(w.seen)-1].epoch = nil
-				w.seen = w.seen[:len(w.seen)-1]
+				w.seen[i] = w.seen[l-1]
+				l--
 			}
 		}
 	}
+	w.seen = w.seen[:0]
 	w.applyWrites()
 	w.innerMap.swap()
 	for _, r := range w.readers {

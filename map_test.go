@@ -160,7 +160,7 @@ func mapTestWrite(b *testing.B, m MapHandle[uint64, int]) {
 	defer cancel()
 
 	conc := runtime.GOMAXPROCS(0)
-	for i := 0; i < conc; i++ {
+	for i := 0; i < conc-1; i++ {
 		go func() {
 			r := m.Reader()
 			idx := rand.Int() % size
