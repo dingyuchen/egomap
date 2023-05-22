@@ -160,7 +160,7 @@ func mapTestWrite(b *testing.B, m MapHandle[uint64, int]) {
 	defer cancel()
 
 	conc := runtime.GOMAXPROCS(0)
-	for i := 0; i < conc-1; i++ {
+	for i := 0; i < conc; i++ {
 		go func() {
 			r := m.Reader()
 			idx := rand.Int() % size
@@ -177,14 +177,20 @@ func mapTestWrite(b *testing.B, m MapHandle[uint64, int]) {
 	}
 
 	id := rand.Int() % size
-	w := m.Writer()
 	runtime.GC()
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		w.Set(keys[id].key, i)
-		w.Refresh()
-		id = (id + 1) % size
-	}
+	w := m.Writer()
+	go func() {
+		for i := 0; i < b.N; i++ {
+			w.Set(keys[id].key, i)
+			w.Refresh()
+			id = (id + 1) % size
+		}
+		wg.Done()
+	}()
+	wg.Wait()
 }
 func BenchmarkEgomap_Write(b *testing.B) {
 	m := NewHandle[uint64, int](1)

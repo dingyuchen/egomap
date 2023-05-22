@@ -66,16 +66,10 @@ Test Specs:
 
 ## Limitations
 
-As with `evmap` and other implementations, this library assumes a singular writer. A synchronized handle for multiple writers is provided.
-
-This map is backed by 2 hashmaps which implies there are 2 copies of data, possibly leading high memory usage. Users should pass pointers into the map to avoid duplicate data.
-
-### Benchmarks
-
-There are some parts of the benchmark that are less than ideal. Mainly:
-
-- Unable to reliably terminate on concurrent, single threaded cases. I believe the reader goroutine yields before completing the read, and writer is able to complete much more (busy) work, leading the scheduler to bias the writer routine?
+- As with `evmap` and other implementations, this library assumes a singular writer. A synchronized handle for multiple writers is provided.
+- This map is backed by 2 hashmaps which implies there are 2 copies of data, possibly leading high memory usage. Users should pass pointers into the map to avoid duplicate data.
 - Benchmark does not test the typical `sync.Map` workload. Keys are overwritten, whereas `sync.Map` is optimized for appends.
+- `write_per` benchmarks exhibit a U-curve. This is seemingly explained by write numbers not scaling (inversely) proportionally to cores, but as to why write times explode on 8 and 10 core runs cannot be explained.
 
 ## Chores
 
