@@ -47,7 +47,7 @@ The benchmark is set up as such:
 - Initialize array of size 1M
 - Generate a random array of keys [0, 1M) over a zipfian distribution
     - For each key, pair with a randomly selected read or write operation (99%, 99.9%, 99.99%, 99.999% reads)
-- Initialize `GOMAXPROCS` goroutines (using `-cpu 1, 2, 4, 8`) with random start indices
+- Initialize `GOMAXPROCS` goroutines (using `-cpu 2, 4, 8, 10`) with random start indices
 
 ### Results
 
@@ -57,7 +57,7 @@ raw output in [`bench.out`](https://github.com/dingyuchen/egomap/blob/master/ben
 Test Specs:
 - Macbook M1 Pro (10 cores)
 - 16GB RAM
-- `go v1.19.9`
+- `go v1.20.3`
 
 ## Features
 
@@ -68,12 +68,19 @@ Test Specs:
 
 As with `evmap` and other implementations, this library assumes a singular writer. A synchronized handle for multiple writers is provided.
 
-This map is backed by 2 hashmaps which implies there are 2 copies of data, possibly leading high memory usage. Please pass pointers into the map if you want to avoid duplicate data.
+This map is backed by 2 hashmaps which implies there are 2 copies of data, possibly leading high memory usage. Users should pass pointers into the map to avoid duplicate data.
+
+### Benchmarks
+
+There are some parts of the benchmark that are less than ideal. Mainly:
+
+- Unable to reliably terminate on concurrent, single threaded cases. I believe the reader goroutine yields before completing the read, and writer is able to complete much more (busy) work, leading the scheduler to bias the writer routine?
+- Benchmark does not test the typical `sync.Map` workload. Keys are overwritten, whereas `sync.Map` is optimized for appends.
 
 ## Chores
 
 - [ ] Add tests
-- [ ] Avoid malloc for oplog and queue
 - [ ] Come up with better way to register and deregister readers
+- [x] Avoid malloc for oplog and queue
 - [x] Add benchmarks with `sync.Map`
 - [x] Profile and optimize
