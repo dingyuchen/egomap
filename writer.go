@@ -41,17 +41,16 @@ func (w *writer[K, V]) Delete(key K) {
 
 func (w *writer[K, V]) Refresh() {
 	w.mu.RLock()
-	l := len(w.seen)
-	for l > 0 {
-		for i := l - 1; i >= 0; i-- {
-			r := w.seen[i]
-			if epoch := r.epoch.Load(); r.past != epoch {
-				w.seen[i] = w.seen[l-1]
-				l--
+	for len(w.seen) > 0 {
+		i := 0
+		for _, r := range w.seen {
+			if epoch := r.epoch.Load(); r.past == epoch {
+				w.seen[i] = r
+				i++
 			}
 		}
+		w.seen = w.seen[:i]
 	}
-	w.seen = w.seen[:0]
 	w.applyWrites()
 	w.innerMap.swap()
 	for _, r := range w.readers {
